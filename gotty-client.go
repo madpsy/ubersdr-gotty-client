@@ -656,6 +656,85 @@ type SessionActionResponse struct {
 	Session string `json:"session,omitempty"`
 }
 
+// Instance represents a UberSDR instance
+type Instance struct {
+	ID                    string   `json:"id"`
+	Callsign              string   `json:"callsign"`
+	Name                  string   `json:"name"`
+	Location              string   `json:"location"`
+	Latitude              float64  `json:"latitude"`
+	Longitude             float64  `json:"longitude"`
+	Altitude              int      `json:"altitude"`
+	Maidenhead            string   `json:"maidenhead"`
+	IsDaylight            bool     `json:"is_daylight"`
+	PublicURL             string   `json:"public_url"`
+	Version               string   `json:"version"`
+	CPUModel              string   `json:"cpu_model"`
+	CPUCores              int      `json:"cpu_cores"`
+	LoadStatus            string   `json:"load_status"`
+	Host                  string   `json:"host"`
+	Port                  int      `json:"port"`
+	TLS                   bool     `json:"tls,omitempty"`
+	MaxClients            int      `json:"max_clients"`
+	AvailableClients      int      `json:"available_clients"`
+	MaxSessionTime        int      `json:"max_session_time"`
+	PublicIQModes         []string `json:"public_iq_modes"`
+	SuccessfulCallbacks   int      `json:"successful_callbacks"`
+	SNR030MHz             int      `json:"snr_0_30_mhz"`
+	SNR1830MHz            int      `json:"snr_1_8_30_mhz"`
+	RotatorEnabled        bool     `json:"rotator_enabled,omitempty"`
+	RotatorConnected      bool     `json:"rotator_connected,omitempty"`
+	RotatorAzimuth        int      `json:"rotator_azimuth"`
+	LastReportAgeSeconds  int      `json:"last_report_age_seconds"`
+}
+
+// InstanceListResponse represents the response from the instances API
+type InstanceListResponse struct {
+	Count     int        `json:"count"`
+	Instances []Instance `json:"instances"`
+}
+
+// ListInstances retrieves the list of available UberSDR instances
+func ListInstances() (*InstanceListResponse, error) {
+	url := "https://instances.ubersdr.org/api/instances"
+	
+	logrus.Debugf("Fetching instances list: %q", url)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("failed to list instances: %d %s - %s", resp.StatusCode, http.StatusText(resp.StatusCode), string(body))
+	}
+
+	var instanceList InstanceListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&instanceList); err != nil {
+		return nil, fmt.Errorf("failed to decode instance list: %v", err)
+	}
+
+	return &instanceList, nil
+}
+
+// FindInstanceByCallsign finds an instance by its callsign
+func FindInstanceByCallsign(callsign string) (*Instance, error) {
+	instances, err := ListInstances()
+	if err != nil {
+		return nil, err
+	}
+
+	callsign = strings.ToUpper(callsign)
+	for _, instance := range instances.Instances {
+		if strings.ToUpper(instance.Callsign) == callsign {
+			return &instance, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no instance found with callsign: %s", callsign)
+}
+
 // ListSessions retrieves the list of available tmux sessions
 func (c *Client) ListSessions() (*SessionListResponse, error) {
 	target, err := url.Parse(c.URL)

@@ -15,6 +15,7 @@ import (
 type HostConfig struct {
 	Host            string
 	URL             string
+	Callsign        string
 	User            string
 	Password        string
 	AdminPassword   string
@@ -84,6 +85,12 @@ func EnsureConfigExists() error {
 #    WSOrigin https://gotty.example.com:8080
 #    PathSuffix /terminal/
 
+# Example: UberSDR instance by callsign
+#Host m9psy
+#    Callsign M9PSY
+#    AdminPassword mypassword
+#    PathSuffix /terminal/
+
 # Example: Development server with self-signed cert
 #Host dev
 #    URL https://dev.example.com:8080
@@ -107,7 +114,8 @@ func EnsureConfigExists() error {
 
 # Configuration Options:
 #   Host            - Alias name for this configuration
-#   URL             - Full URL to the GoTTY server (required)
+#   URL             - Full URL to the GoTTY server (required unless Callsign is set)
+#   Callsign        - UberSDR instance callsign (alternative to URL)
 #   User            - Username for basic authentication
 #   Password        - Password for basic authentication
 #   AdminPassword   - Admin password for X-Admin-Password header
@@ -193,6 +201,8 @@ func LoadConfigFromPath(path string) (*Config, error) {
 		switch key {
 		case "URL":
 			currentHost.URL = value
+		case "Callsign":
+			currentHost.Callsign = value
 		case "User":
 			currentHost.User = value
 		case "Password":
@@ -260,6 +270,9 @@ func MergeHostConfigs(configs ...*HostConfig) *HostConfig {
 		if config.URL != "" {
 			result.URL = config.URL
 		}
+		if config.Callsign != "" {
+			result.Callsign = config.Callsign
+		}
 		if config.User != "" {
 			result.User = config.User
 		}
@@ -291,9 +304,9 @@ func (hc *HostConfig) ApplyToClient(client *Client) {
 		return
 	}
 
-	if hc.URL != "" {
-		client.URL = hc.URL
-	}
+	// Note: URL and Callsign are handled in createClient() before this is called
+	// We don't override URL here to avoid duplicate callsign resolution
+	
 	if hc.User != "" {
 		client.User = hc.User
 	}
@@ -349,4 +362,92 @@ func parseBool(s string) bool {
 		return s == "yes" || s == "y"
 	}
 	return b
+}
+
+// SaveHostConfig saves or updates a host configuration in the config file
+func SaveHostConfig(hostAlias string, config *HostConfig) error {
+	configPath := GetDefaultConfigPath()
+	if configPath == "" {
+		return fmt.Errorf("could not determine home directory")
+	}
+
+	// Ensure config directory exists
+	configDir := filepath.Dir(configPath)
+	if err := os.MkdirAll(configDir, 0700); err != nil {
+		return fmt.Errorf("failed to create config directory: %v", err)
+	}
+
+	// Load existing config
+	existingConfig, err := LoadConfigFromPath(configPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to load existing config: %v", err)
+	}
+	if existingConfig == nil {
+		existingConfig = &Config{Hosts: make(map[string]*HostConfig)}
+	}
+
+	// Update or add the host config
+	config.Host = hostAlias
+	existingConfig.Hosts[hostAlias] = config
+
+	// Write config back to file
+	return WriteConfig(configPath, existingConfig)
+}
+
+// WriteConfig writes the entire configuration to a file
+func WriteConfig(path string, config *Config) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to open config file for writing: %v", err)
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	defer writer.Flush()
+
+	// Write header
+	fmt.Fprintln(writer, "# GoTTY Client Configuration")
+	fmt.Fprintln(writer, "# Auto-generated and manually editable")
+	fmt.Fprintln(writer, "# File location:", path)
+	fmt.Fprintln(writer)
+
+	// Write each host configuration
+	for hostAlias, hostConfig := range config.Hosts {
+		fmt.Fprintf(writer, "Host %s\n", hostAlias)
+		
+		if hostConfig.URL != "" {
+			fmt.Fprintf(writer, "    URL %s\n", hostConfig.URL)
+		}
+		if hostConfig.Callsign != "" {
+			fmt.Fprintf(writer, "    Callsign %s\n", hostConfig.Callsign)
+		}
+		if hostConfig.User != "" {
+			fmt.Fprintf(writer, "    User %s\n", hostConfig.User)
+		}
+		if hostConfig.Password != "" {
+			fmt.Fprintf(writer, "    Password %s\n", hostConfig.Password)
+		}
+		if hostConfig.AdminPassword != "" {
+			fmt.Fprintf(writer, "    AdminPassword %s\n", hostConfig.AdminPassword)
+		}
+		if hostConfig.SkipTLSVerify {
+			fmt.Fprintf(writer, "    SkipTLSVerify true\n")
+		}
+		if hostConfig.UseProxyFromEnv {
+			fmt.Fprintf(writer, "    UseProxyFromEnv true\n")
+		}
+		if hostConfig.WSOrigin != "" {
+			fmt.Fprintf(writer, "    WSOrigin %s\n", hostConfig.WSOrigin)
+		}
+		if hostConfig.V2 {
+			fmt.Fprintf(writer, "    V2 true\n")
+		}
+		if hostConfig.PathSuffix != "" {
+			fmt.Fprintf(writer, "    PathSuffix %s\n", hostConfig.PathSuffix)
+		}
+		
+		fmt.Fprintln(writer)
+	}
+
+	return writer.Flush()
 }
