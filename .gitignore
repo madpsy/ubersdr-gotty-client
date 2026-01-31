@@ -18,8 +18,8 @@ vendor/
 go.work
 
 # Build output
-uberterm
-gotty-client
+/uberterm
+/gotty-client
 
 # IDE specific files
 .vscode/
