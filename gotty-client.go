@@ -439,35 +439,34 @@ func (c *Client) termsizeLoop(wg *sync.WaitGroup) poisonReason {
 	notifySignalSIGWINCH(ch)
 	defer resetSignalSIGWINCH()
 
-	// Delay first resize to ensure auth message is processed first
-	firstResize := true
+	// Delay first resize to ensure auth message is processed first and terminal is ready
+	// Match the web interface delay (100ms) plus extra time for terminal setup
+	time.Sleep(200 * time.Millisecond)
 	
-	for {
-		if !firstResize {
-			if b, err := syscallTIOCGWINSZ(); err != nil {
-				logrus.Warn(err)
-			} else {
-				if err = c.write(append([]byte{c.message.resizeTerminal}, b...)); err != nil {
-					logrus.Warnf("ws.WriteMessage failed: %v", err)
-				}
-			}
-		} else {
-			// Wait 150ms before sending first resize
-			time.Sleep(150 * time.Millisecond)
-			if b, err := syscallTIOCGWINSZ(); err != nil {
-				logrus.Warn(err)
-			} else {
-				if err = c.write(append([]byte{c.message.resizeTerminal}, b...)); err != nil {
-					logrus.Warnf("ws.WriteMessage failed: %v", err)
-				}
-			}
-			firstResize = false
+	// Send initial resize
+	if b, err := syscallTIOCGWINSZ(); err != nil {
+		// Suppress warning on first attempt - terminal might not be fully ready
+		logrus.Debugf("Initial terminal size query failed (expected): %v", err)
+	} else {
+		if err = c.write(append([]byte{c.message.resizeTerminal}, b...)); err != nil {
+			logrus.Warnf("ws.WriteMessage failed: %v", err)
 		}
+	}
+	
+	// Handle subsequent resize events
+	for {
 		select {
 		case <-c.poison:
 			/* Somebody poisoned the well; die */
 			return die(fname, c.poison)
 		case <-ch:
+			if b, err := syscallTIOCGWINSZ(); err != nil {
+				logrus.Warn(err)
+			} else {
+				if err = c.write(append([]byte{c.message.resizeTerminal}, b...)); err != nil {
+					logrus.Warnf("ws.WriteMessage failed: %v", err)
+				}
+			}
 		}
 	}
 }
