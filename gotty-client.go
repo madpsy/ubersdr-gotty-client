@@ -147,6 +147,7 @@ type Client struct {
 	User            string
 	Password        string
 	AdminPassword   string
+	PathSuffix      string
 }
 
 type querySingleType struct {

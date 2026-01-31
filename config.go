@@ -22,6 +22,7 @@ type HostConfig struct {
 	UseProxyFromEnv bool
 	WSOrigin        string
 	V2              bool
+	PathSuffix      string
 }
 
 // Config represents the entire configuration file
@@ -72,6 +73,7 @@ func EnsureConfigExists() error {
 #    AdminPassword secretadmin
 #    SkipTLSVerify false
 #    UseProxyFromEnv false
+#    PathSuffix /terminal/
 
 # Example: Production server with TLS
 #Host production
@@ -80,6 +82,7 @@ func EnsureConfigExists() error {
 #    AdminPassword prodadminpass
 #    SkipTLSVerify false
 #    WSOrigin https://gotty.example.com:8080
+#    PathSuffix /terminal/
 
 # Example: Development server with self-signed cert
 #Host dev
@@ -87,6 +90,7 @@ func EnsureConfigExists() error {
 #    AdminPassword devpass
 #    SkipTLSVerify true
 #    V2 true
+#    PathSuffix /terminal/
 
 # Example: Using wildcards for multiple hosts
 #Host *.internal
@@ -99,6 +103,7 @@ func EnsureConfigExists() error {
 #    SkipTLSVerify false
 #    UseProxyFromEnv false
 #    V2 false
+#    PathSuffix /terminal/
 
 # Configuration Options:
 #   Host            - Alias name for this configuration
@@ -110,6 +115,7 @@ func EnsureConfigExists() error {
 #   UseProxyFromEnv - Use HTTP_PROXY/HTTPS_PROXY from environment (true/false)
 #   WSOrigin        - WebSocket Origin URL
 #   V2              - Use GoTTY 2.0 protocol (true/false)
+#   PathSuffix      - Path to append to URL (default: /terminal/)
 `
 
 	if err := os.WriteFile(configPath, []byte(exampleConfig), 0600); err != nil {
@@ -201,6 +207,8 @@ func LoadConfigFromPath(path string) (*Config, error) {
 			currentHost.WSOrigin = value
 		case "V2":
 			currentHost.V2 = parseBool(value)
+		case "PathSuffix":
+			currentHost.PathSuffix = value
 		default:
 			logrus.Warnf("line %d: unknown configuration option: %s", lineNum, key)
 		}
@@ -269,6 +277,9 @@ func MergeHostConfigs(configs ...*HostConfig) *HostConfig {
 		if config.WSOrigin != "" {
 			result.WSOrigin = config.WSOrigin
 		}
+		if config.PathSuffix != "" {
+			result.PathSuffix = config.PathSuffix
+		}
 	}
 
 	return result
@@ -303,6 +314,9 @@ func (hc *HostConfig) ApplyToClient(client *Client) {
 	}
 	if hc.V2 {
 		client.V2 = hc.V2
+	}
+	if hc.PathSuffix != "" {
+		client.PathSuffix = hc.PathSuffix
 	}
 }
 
