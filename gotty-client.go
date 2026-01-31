@@ -166,15 +166,20 @@ func (c *Client) GetAuthToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	
+	// Add admin password header first (highest priority for proxy authentication)
+	if c.AdminPassword != "" {
+		header.Add("X-Admin-Password", c.AdminPassword)
+	}
+	
+	// Add basic auth if user is specified
 	if c.User != "" {
 		basicAuth := c.User + ":" + c.Password
 		header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(basicAuth)))
 	}
-	if c.AdminPassword != "" {
-		header.Add("X-Admin-Password", c.AdminPassword)
-	}
 
 	logrus.Debugf("Fetching auth token auth-token: %q", target.String())
+	logrus.Debugf("Request headers: %v", header)
 	req, err := http.NewRequest("GET", target.String(), nil)
 	if err != nil {
 		return "", err
@@ -207,13 +212,17 @@ func (c *Client) GetAuthToken() (string, error) {
 		return "", err
 	}
 
+	logrus.Debugf("Auth token response body: %s", string(body))
+	
 	re := regexp.MustCompile("var gotty_auth_token = '(.*)'")
 	output := re.FindStringSubmatch(string(body))
 	if len(output) == 0 {
 		return "", fmt.Errorf("cannot fetch GoTTY auth-token, please upgrade your GoTTY server")
 	}
 
-	return output[1], nil
+	authToken := output[1]
+	logrus.Debugf("Extracted auth token: %q (length: %d)", authToken, len(authToken))
+	return authToken, nil
 }
 
 // Connect tries to dial a websocket server
@@ -230,17 +239,23 @@ func (c *Client) Connect() error {
 	if err != nil {
 		return err
 	}
+	
+	// Add admin password header first (highest priority for proxy authentication)
+	if c.AdminPassword != "" {
+		header.Add("X-Admin-Password", c.AdminPassword)
+	}
+	
+	// Add basic auth if user is specified
 	if c.User != "" {
 		basicAuth := c.User + ":" + c.Password
 		header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(basicAuth)))
 	}
-	if c.AdminPassword != "" {
-		header.Add("X-Admin-Password", c.AdminPassword)
-	}
+	
 	if c.WSOrigin != "" {
 		header.Add("Origin", c.WSOrigin)
 	}
 	logrus.Debugf("Connecting to websocket: %q", target.String())
+	logrus.Debugf("WebSocket headers: %v", header)
 	if c.SkipTLSVerify {
 		c.Dialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
@@ -253,6 +268,9 @@ func (c *Client) Connect() error {
 	}
 	c.Conn = conn
 	c.Connected = true
+
+	// Initialize message types for gotty BEFORE sending any messages
+	c.initMessageType()
 
 	// Pass arguments and auth-token
 	query, err := GetURLQuery(c.URL)
@@ -269,14 +287,11 @@ func (c *Client) Connect() error {
 		return err
 	}
 	// Send Json
-	logrus.Debugf("Sending arguments and auth-token")
+	logrus.Debugf("Sending arguments and auth-token: %s", string(queryJSON))
 	err = c.write(queryJSON)
 	if err != nil {
 		return err
 	}
-
-	// Initialize message types for gotty
-	c.initMessageType()
 
 	// Small delay to ensure server processes auth message before we start sending other messages
 	time.Sleep(100 * time.Millisecond)
@@ -658,12 +673,15 @@ func (c *Client) ListSessions() (*SessionListResponse, error) {
 	}
 
 	// Add authentication headers
+	// Add admin password header first (highest priority for proxy authentication)
+	if c.AdminPassword != "" {
+		req.Header.Add("X-Admin-Password", c.AdminPassword)
+	}
+	
+	// Add basic auth if user is specified
 	if c.User != "" {
 		basicAuth := c.User + ":" + c.Password
 		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(basicAuth)))
-	}
-	if c.AdminPassword != "" {
-		req.Header.Add("X-Admin-Password", c.AdminPassword)
 	}
 
 	// Setup HTTP client
@@ -716,12 +734,15 @@ func (c *Client) DestroySession(sessionName string) (*SessionActionResponse, err
 	}
 
 	// Add authentication headers
+	// Add admin password header first (highest priority for proxy authentication)
+	if c.AdminPassword != "" {
+		req.Header.Add("X-Admin-Password", c.AdminPassword)
+	}
+	
+	// Add basic auth if user is specified
 	if c.User != "" {
 		basicAuth := c.User + ":" + c.Password
 		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(basicAuth)))
-	}
-	if c.AdminPassword != "" {
-		req.Header.Add("X-Admin-Password", c.AdminPassword)
 	}
 
 	// Setup HTTP client

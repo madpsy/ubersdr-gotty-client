@@ -4,6 +4,7 @@ Uberterm is an enhanced version of gotty-client with full support for ubersdr-go
 
 ## Features
 
+- ✅ **SSH-Style Configuration** - Store connection settings in `~/.gotty-client/config`
 - ✅ **Session Management** - List and destroy tmux sessions
 - ✅ **X-Admin-Password Header** - Support for admin authentication
 - ✅ **Basic Authentication** - Username/password authentication
@@ -58,6 +59,39 @@ go build -o uberterm ./cmd/gotty-client
 ```
 
 ## Usage
+
+### Configuration File (Recommended)
+
+Uberterm supports SSH-style configuration files for storing connection settings, including admin passwords.
+
+On first run, a config file is automatically created at `~/.gotty-client/config` with examples.
+
+**Example config:**
+```
+Host local
+    URL http://localhost:8080
+    AdminPassword secretadmin
+
+Host production
+    URL https://prod.example.com:8080
+    User operator
+    AdminPassword prodpass
+    SkipTLSVerify false
+```
+
+**Usage:**
+```bash
+# Connect using host alias
+uberterm local
+
+# List sessions
+uberterm sessions production
+
+# Destroy session
+uberterm destroy production session-name
+```
+
+See [CONFIG.md](CONFIG.md) for complete configuration documentation.
 
 ### Basic Connection
 
@@ -280,7 +314,9 @@ ubersdr-gotty-client/
 ├── cmd/gotty-client/     # CLI application
 │   └── main.go           # Command-line interface
 ├── gotty-client.go       # Core client library
+├── config.go             # Configuration file parser
 ├── build.sh              # Build script
+├── CONFIG.md             # Configuration file documentation
 ├── SESSIONS.md           # Session features documentation
 └── README_UBERTERM.md    # This file
 ```
@@ -304,9 +340,10 @@ go build -o uberterm ./cmd/gotty-client
 go test ./...
 ```
 
-## API Reference
+## Documentation
 
-See [SESSIONS.md](SESSIONS.md) for detailed API documentation.
+- [CONFIG.md](CONFIG.md) - Configuration file guide
+- [SESSIONS.md](SESSIONS.md) - Session management API documentation
 
 ## License
 
