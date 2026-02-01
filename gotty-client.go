@@ -22,6 +22,30 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// SanitizeSessionName sanitizes a session/window name to only contain lowercase alphanumeric characters and hyphens
+// This prevents command injection and ensures compatibility with tmux session naming
+// Maximum length is 20 characters
+func SanitizeSessionName(name string) string {
+	// Convert to lowercase
+	name = strings.ToLower(name)
+	
+	// Remove all characters except lowercase letters, numbers, and hyphens
+	reg := regexp.MustCompile(`[^a-z0-9-]`)
+	sanitized := reg.ReplaceAllString(name, "")
+	
+	// Limit to 20 characters
+	if len(sanitized) > 20 {
+		sanitized = sanitized[:20]
+	}
+	
+	// If the result is empty, return a default
+	if sanitized == "" {
+		return "session"
+	}
+	
+	return sanitized
+}
+
 // message types for gotty
 const (
 	OutputV1         = '0'

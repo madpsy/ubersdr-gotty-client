@@ -276,7 +276,10 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 			}
 			
 			if secondArgIsHost {
-				newSessionName = args[0]
+				newSessionName = gottyclient.SanitizeSessionName(args[0])
+				if newSessionName != args[0] {
+					logrus.Warnf("Window name sanitized from '%s' to '%s' (only lowercase alphanumeric and hyphens allowed)", args[0], newSessionName)
+				}
 				logrus.Debugf("Using custom window name from argument: %s", newSessionName)
 			}
 		}
@@ -291,9 +294,17 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 	// Determine session name - either from --session or by looking up --window
 	sessionName := ""
 	if c.IsSet("session") {
-		sessionName = c.String("session")
+		rawSessionName := c.String("session")
+		sessionName = gottyclient.SanitizeSessionName(rawSessionName)
+		if sessionName != rawSessionName {
+			logrus.Warnf("Session name sanitized from '%s' to '%s' (only lowercase alphanumeric and hyphens allowed)", rawSessionName, sessionName)
+		}
 	} else if c.GlobalIsSet("session") {
-		sessionName = c.GlobalString("session")
+		rawSessionName := c.GlobalString("session")
+		sessionName = gottyclient.SanitizeSessionName(rawSessionName)
+		if sessionName != rawSessionName {
+			logrus.Warnf("Session name sanitized from '%s' to '%s' (only lowercase alphanumeric and hyphens allowed)", rawSessionName, sessionName)
+		}
 	}
 	
 	// If --new-session is specified, auto-generate a session ID
@@ -306,9 +317,17 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 	// If window name is specified, look up the session
 	windowName := ""
 	if c.IsSet("window") {
-		windowName = c.String("window")
+		rawWindowName := c.String("window")
+		windowName = gottyclient.SanitizeSessionName(rawWindowName)
+		if windowName != rawWindowName {
+			logrus.Warnf("Window name sanitized from '%s' to '%s' (only lowercase alphanumeric and hyphens allowed)", rawWindowName, windowName)
+		}
 	} else if c.GlobalIsSet("window") {
-		windowName = c.GlobalString("window")
+		rawWindowName := c.GlobalString("window")
+		windowName = gottyclient.SanitizeSessionName(rawWindowName)
+		if windowName != rawWindowName {
+			logrus.Warnf("Window name sanitized from '%s' to '%s' (only lowercase alphanumeric and hyphens allowed)", rawWindowName, windowName)
+		}
 	}
 	
 	if windowName != "" && sessionName == "" && newSessionName == "" {
@@ -368,8 +387,10 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 			
 			// If this is a new session with custom window name, add name parameter too
 			if newSessionName != "" {
-				url = url + "&name=" + newSessionName
-				logrus.Infof("Creating new session '%s' with window name: %s", sessionName, newSessionName)
+				// Sanitize the session name before adding to URL (defense in depth)
+				sanitizedName := gottyclient.SanitizeSessionName(newSessionName)
+				url = url + "&name=" + sanitizedName
+				logrus.Infof("Creating new session '%s' with window name: %s", sessionName, sanitizedName)
 				fmt.Println("\n💡 Tip: To detach from session without closing it, press Ctrl-b then d\n")
 			} else {
 				logrus.Debugf("Attaching to session: %s", sessionName)
@@ -618,7 +639,11 @@ func listSessionsAction(c *cli.Context) error {
 }
 
 func destroySessionAction(c *cli.Context) error {
-	sessionName := c.String("destroy-session")
+	rawSessionName := c.String("destroy-session")
+	sessionName := gottyclient.SanitizeSessionName(rawSessionName)
+	if sessionName != rawSessionName {
+		logrus.Warnf("Session name sanitized from '%s' to '%s' (only lowercase alphanumeric and hyphens allowed)", rawSessionName, sessionName)
+	}
 	if sessionName == "" {
 		return fmt.Errorf("session name required for --destroy-session")
 	}
