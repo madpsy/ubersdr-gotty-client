@@ -22,15 +22,21 @@ go mod download
 echo "Compiling..."
 go build -ldflags "${LDFLAGS}" -o uberterm ./cmd/gotty-client
 
+# Install to system
+echo "Installing to /usr/local/bin..."
+sudo cp uberterm /usr/local/bin/uberterm
+sudo chmod +x /usr/local/bin/uberterm
+
 echo ""
 echo "✓ Build successful!"
 echo "  Binary: ./uberterm"
+echo "  Installed: /usr/local/bin/uberterm"
 echo "  Version: ${VERSION}"
 echo "  Go: ${GO_VERSION}"
 echo ""
 echo "Usage examples:"
-echo "  ./uberterm http://localhost:8080"
-echo "  ./uberterm sessions http://localhost:8080"
-echo "  ./uberterm destroy http://localhost:8080 session-name"
-echo "  ./uberterm --admin-password secret http://localhost:8080"
+echo "  uberterm http://localhost:8080"
+echo "  uberterm sessions http://localhost:8080"
+echo "  uberterm destroy http://localhost:8080 session-name"
+echo "  uberterm --admin-password secret http://localhost:8080"
 echo ""
