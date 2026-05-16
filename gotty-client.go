@@ -28,21 +28,21 @@ import (
 func SanitizeSessionName(name string) string {
 	// Convert to lowercase
 	name = strings.ToLower(name)
-	
+
 	// Remove all characters except lowercase letters, numbers, and hyphens
 	reg := regexp.MustCompile(`[^a-z0-9-]`)
 	sanitized := reg.ReplaceAllString(name, "")
-	
+
 	// Limit to 20 characters
 	if len(sanitized) > 20 {
 		sanitized = sanitized[:20]
 	}
-	
+
 	// If the result is empty, return a default
 	if sanitized == "" {
 		return "session"
 	}
-	
+
 	return sanitized
 }
 
@@ -191,12 +191,12 @@ func (c *Client) GetAuthToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Add admin password header first (highest priority for proxy authentication)
 	if c.AdminPassword != "" {
 		header.Add("X-Admin-Password", c.AdminPassword)
 	}
-	
+
 	// Add basic auth if user is specified
 	if c.User != "" {
 		basicAuth := c.User + ":" + c.Password
@@ -238,7 +238,7 @@ func (c *Client) GetAuthToken() (string, error) {
 	}
 
 	logrus.Debugf("Auth token response body: %s", string(body))
-	
+
 	re := regexp.MustCompile("var gotty_auth_token = '(.*)'")
 	output := re.FindStringSubmatch(string(body))
 	if len(output) == 0 {
@@ -264,18 +264,18 @@ func (c *Client) Connect() error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Add admin password header first (highest priority for proxy authentication)
 	if c.AdminPassword != "" {
 		header.Add("X-Admin-Password", c.AdminPassword)
 	}
-	
+
 	// Add basic auth if user is specified
 	if c.User != "" {
 		basicAuth := c.User + ":" + c.Password
 		header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(basicAuth)))
 	}
-	
+
 	if c.WSOrigin != "" {
 		header.Add("Origin", c.WSOrigin)
 	}
@@ -467,7 +467,7 @@ func (c *Client) termsizeLoop(wg *sync.WaitGroup) poisonReason {
 	// Delay first resize to ensure auth message is processed first and terminal is ready
 	// Match the web interface delay (100ms) plus extra time for terminal setup
 	time.Sleep(200 * time.Millisecond)
-	
+
 	// Send initial resize
 	if b, err := syscallTIOCGWINSZ(); err != nil {
 		// Suppress warning on first attempt - terminal might not be fully ready
@@ -477,7 +477,7 @@ func (c *Client) termsizeLoop(wg *sync.WaitGroup) poisonReason {
 			logrus.Warnf("ws.WriteMessage failed: %v", err)
 		}
 	}
-	
+
 	// Handle subsequent resize events
 	for {
 		select {
@@ -682,34 +682,34 @@ type SessionActionResponse struct {
 
 // Instance represents a UberSDR instance
 type Instance struct {
-	ID                    string   `json:"id"`
-	Callsign              string   `json:"callsign"`
-	Name                  string   `json:"name"`
-	Location              string   `json:"location"`
-	Latitude              float64  `json:"latitude"`
-	Longitude             float64  `json:"longitude"`
-	Altitude              int      `json:"altitude"`
-	Maidenhead            string   `json:"maidenhead"`
-	IsDaylight            bool     `json:"is_daylight"`
-	PublicURL             string   `json:"public_url"`
-	Version               string   `json:"version"`
-	CPUModel              string   `json:"cpu_model"`
-	CPUCores              int      `json:"cpu_cores"`
-	LoadStatus            string   `json:"load_status"`
-	Host                  string   `json:"host"`
-	Port                  int      `json:"port"`
-	TLS                   bool     `json:"tls,omitempty"`
-	MaxClients            int      `json:"max_clients"`
-	AvailableClients      int      `json:"available_clients"`
-	MaxSessionTime        int      `json:"max_session_time"`
-	PublicIQModes         []string `json:"public_iq_modes"`
-	SuccessfulCallbacks   int      `json:"successful_callbacks"`
-	SNR030MHz             int      `json:"snr_0_30_mhz"`
-	SNR1830MHz            int      `json:"snr_1_8_30_mhz"`
-	RotatorEnabled        bool     `json:"rotator_enabled,omitempty"`
-	RotatorConnected      bool     `json:"rotator_connected,omitempty"`
-	RotatorAzimuth        int      `json:"rotator_azimuth"`
-	LastReportAgeSeconds  int      `json:"last_report_age_seconds"`
+	ID                   string   `json:"id"`
+	Callsign             string   `json:"callsign"`
+	Name                 string   `json:"name"`
+	Location             string   `json:"location"`
+	Latitude             float64  `json:"latitude"`
+	Longitude            float64  `json:"longitude"`
+	Altitude             int      `json:"altitude"`
+	Maidenhead           string   `json:"maidenhead"`
+	IsDaylight           bool     `json:"is_daylight"`
+	PublicURL            string   `json:"public_url"`
+	Version              string   `json:"version"`
+	CPUModel             string   `json:"cpu_model"`
+	CPUCores             int      `json:"cpu_cores"`
+	LoadStatus           string   `json:"load_status"`
+	Host                 string   `json:"host"`
+	Port                 int      `json:"port"`
+	TLS                  bool     `json:"tls,omitempty"`
+	MaxClients           int      `json:"max_clients"`
+	AvailableClients     int      `json:"available_clients"`
+	MaxSessionTime       int      `json:"max_session_time"`
+	PublicIQModes        []string `json:"public_iq_modes"`
+	SuccessfulCallbacks  int      `json:"successful_callbacks"`
+	SNR030MHz            int      `json:"snr_0_30_mhz"`
+	SNR1830MHz           int      `json:"snr_1_8_30_mhz"`
+	RotatorEnabled       bool     `json:"rotator_enabled,omitempty"`
+	RotatorConnected     bool     `json:"rotator_connected,omitempty"`
+	RotatorAzimuth       int      `json:"rotator_azimuth"`
+	LastReportAgeSeconds int      `json:"last_report_age_seconds"`
 }
 
 // InstanceListResponse represents the response from the instances API
@@ -721,7 +721,7 @@ type InstanceListResponse struct {
 // ListInstances retrieves the list of available UberSDR instances
 func ListInstances() (*InstanceListResponse, error) {
 	url := "https://instances.ubersdr.org/api/instances"
-	
+
 	logrus.Debugf("Fetching instances list: %q", url)
 	resp, err := http.Get(url)
 	if err != nil {
@@ -780,7 +780,7 @@ func (c *Client) ListSessions() (*SessionListResponse, error) {
 	if c.AdminPassword != "" {
 		req.Header.Add("X-Admin-Password", c.AdminPassword)
 	}
-	
+
 	// Add basic auth if user is specified
 	if c.User != "" {
 		basicAuth := c.User + ":" + c.Password
@@ -841,7 +841,7 @@ func (c *Client) DestroySession(sessionName string) (*SessionActionResponse, err
 	if c.AdminPassword != "" {
 		req.Header.Add("X-Admin-Password", c.AdminPassword)
 	}
-	
+
 	// Add basic auth if user is specified
 	if c.User != "" {
 		basicAuth := c.User + ":" + c.Password
@@ -875,4 +875,118 @@ func (c *Client) DestroySession(sessionName string) (*SessionActionResponse, err
 	}
 
 	return &actionResp, nil
+}
+
+// SupportEntry represents an active support tunnel session on the tunnel server.
+// Mirrors the SupportEntry struct in ubersdr-aux/tunnel/support.go.
+type SupportEntry struct {
+	InstanceUUID  string  `json:"instance_uuid"`
+	Callsign      string  `json:"callsign"`
+	Connected     bool    `json:"connected"`
+	ConnectedAt   *string `json:"connected_at"`
+	ClientIP      string  `json:"client_ip"`
+	BaseURL       string  `json:"base_url"`       // e.g. https://support-1b7652857267.tunnel.ubersdr.org (no path)
+	AccessURL     string  `json:"access_url"`     // e.g. https://support-1b7652857267.tunnel.ubersdr.org/admin.html
+	AdminPassword string  `json:"admin_password"` // extracted from uploaded config.yaml; may be empty
+}
+
+const defaultTunnelBaseURL = "https://tunnel.ubersdr.org"
+
+// ListSupportSessions queries GET /admin/api/support on the tunnel server and
+// returns all currently-active support sessions.
+// tunnelBaseURL defaults to https://tunnel.ubersdr.org if empty.
+// adminPassword is sent as X-Admin-Password.
+func ListSupportSessions(tunnelBaseURL, adminPassword string) ([]SupportEntry, error) {
+	if tunnelBaseURL == "" {
+		tunnelBaseURL = defaultTunnelBaseURL
+	}
+	tunnelBaseURL = strings.TrimRight(tunnelBaseURL, "/")
+
+	req, err := http.NewRequest("GET", tunnelBaseURL+"/admin/api/support", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-Admin-Password", adminPassword)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reach tunnel server: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("tunnel admin authentication failed (wrong password?)")
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("tunnel server returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	var entries []SupportEntry
+	if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
+		return nil, fmt.Errorf("failed to decode support list: %v", err)
+	}
+	return entries, nil
+}
+
+// RequestSupportAccess calls POST /admin/api/support/request-access on the tunnel
+// server, which registers the caller's public IP as a one-time dynamic allowlist
+// entry (valid for 60 seconds or until first use).
+// Returns the registered IP and expiry seconds, or an error.
+func RequestSupportAccess(tunnelBaseURL, adminPassword string) (ip string, expiresIn int, err error) {
+	if tunnelBaseURL == "" {
+		tunnelBaseURL = defaultTunnelBaseURL
+	}
+	tunnelBaseURL = strings.TrimRight(tunnelBaseURL, "/")
+
+	req, err := http.NewRequest("POST", tunnelBaseURL+"/admin/api/support/request-access", nil)
+	if err != nil {
+		return "", 0, err
+	}
+	req.Header.Set("X-Admin-Password", adminPassword)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to reach tunnel server: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return "", 0, fmt.Errorf("tunnel admin authentication failed (wrong password?)")
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return "", 0, fmt.Errorf("support feature is disabled on the tunnel server")
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return "", 0, fmt.Errorf("tunnel server returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	var result struct {
+		IP        string `json:"ip"`
+		ExpiresIn int    `json:"expires_in"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", 0, fmt.Errorf("failed to decode response: %v", err)
+	}
+	return result.IP, result.ExpiresIn, nil
+}
+
+// SupportTerminalURL returns the terminal URL for a support tunnel entry.
+// It uses BaseURL (the clean host-only URL) if available, falling back to
+// stripping the path from AccessURL for older server responses.
+func SupportTerminalURL(entry SupportEntry) string {
+	base := entry.BaseURL
+	if base == "" {
+		// Fallback for older server: strip path from access_url
+		u, err := url.Parse(entry.AccessURL)
+		if err != nil || u.Host == "" {
+			return entry.AccessURL
+		}
+		u.Path = ""
+		u.RawQuery = ""
+		u.Fragment = ""
+		base = u.String()
+	}
+	return strings.TrimRight(base, "/") + "/terminal/"
 }

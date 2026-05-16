@@ -102,7 +102,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "config, c",
-			Usage: "Path to config file",
+			Usage: fmt.Sprintf("Path to config file (default: %s)", gottyclient.GetDefaultConfigPath()),
 			Value: gottyclient.GetDefaultConfigPath(),
 		},
 		cli.StringFlag{
@@ -120,6 +120,39 @@ func main() {
 		cli.StringFlag{
 			Name:  "destroy-session",
 			Usage: "Destroy a tmux session by name",
+		},
+	}
+
+	app.Commands = []cli.Command{
+		{
+			Name:  "support",
+			Usage: "Manage and connect to active support tunnels on tunnel.ubersdr.org",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:   "tunnel-url, t",
+					Usage:  "Tunnel server base URL",
+					Value:  "https://tunnel.ubersdr.org",
+					EnvVar: "UBERTERM_TUNNEL_URL",
+				},
+				cli.StringFlag{
+					Name:   "admin-password, a",
+					Usage:  "Tunnel server admin password (X-Admin-Password)",
+					EnvVar: "UBERTERM_TUNNEL_ADMIN_PASSWORD",
+				},
+				cli.BoolFlag{
+					Name:  "list, l",
+					Usage: "List active support tunnels and exit",
+				},
+				cli.StringFlag{
+					Name:  "uuid, u",
+					Usage: "Connect to the support tunnel for this instance UUID",
+				},
+				cli.StringFlag{
+					Name:  "callsign, c",
+					Usage: "Connect to the support tunnel for this callsign",
+				},
+			},
+			Action: supportAction,
 		},
 	}
 
@@ -155,7 +188,7 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 	}
 
 	var urlOrAlias string
-	
+
 	if callsign != "" {
 		// Look up instance by callsign
 		logrus.Infof("Looking up instance by callsign: %s", callsign)
@@ -171,7 +204,7 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 		if len(args) == 0 {
 			return nil, fmt.Errorf("URL, host alias, or --callsign required")
 		}
-		
+
 		// Check if --new-session is set and first arg might be the window name
 		if c.Bool("new-session") && len(args) >= 2 {
 			// First arg could be window name, second is URL/alias
@@ -191,11 +224,11 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 			urlOrAlias = args[0]
 		}
 	}
-	
+
 	// Try to get host config from config file
 	var hostConfig *gottyclient.HostConfig
 	var url string
-	
+
 	// Check if it's a URL or a host alias
 	if strings.HasPrefix(urlOrAlias, "http://") || strings.HasPrefix(urlOrAlias, "https://") {
 		// It's a URL
@@ -232,7 +265,7 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 			hostConfig = config.GetHostConfig("*")
 		}
 	}
-	
+
 	// Apply path suffix (default: /terminal/)
 	pathSuffix := "/terminal/"
 	if c.IsSet("path-suffix") {
@@ -242,7 +275,7 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 	} else if hostConfig != nil && hostConfig.PathSuffix != "" {
 		pathSuffix = hostConfig.PathSuffix
 	}
-	
+
 	// Append path suffix to URL if it doesn't already have it
 	if pathSuffix != "" && !strings.Contains(url, pathSuffix) {
 		// Parse URL to add path suffix
@@ -256,11 +289,11 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 			logrus.Debugf("Applied path suffix: %s", pathSuffix)
 		}
 	}
-	
+
 	// Check if creating a new session
 	createNewSession := c.Bool("new-session") || c.GlobalBool("new-session")
 	newSessionName := ""
-	
+
 	if createNewSession {
 		// Check if window name was provided as first argument
 		args := c.Args()
@@ -268,13 +301,13 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 			// Check if first arg is the window name (second arg is URL/alias)
 			config, _ := gottyclient.LoadConfigFromPath(c.String("config"))
 			secondArgIsHost := false
-			
+
 			if config != nil && config.GetHostConfig(args[1]) != nil {
 				secondArgIsHost = true
 			} else if strings.HasPrefix(args[1], "http://") || strings.HasPrefix(args[1], "https://") || strings.Contains(args[1], ":") {
 				secondArgIsHost = true
 			}
-			
+
 			if secondArgIsHost {
 				newSessionName = gottyclient.SanitizeSessionName(args[0])
 				if newSessionName != args[0] {
@@ -283,14 +316,14 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 				logrus.Debugf("Using custom window name from argument: %s", newSessionName)
 			}
 		}
-		
+
 		// If no custom name provided, generate one
 		if newSessionName == "" {
 			newSessionName = generateSessionName()
 			logrus.Infof("Auto-generated window name: %s", newSessionName)
 		}
 	}
-	
+
 	// Determine session name - either from --session or by looking up --window
 	sessionName := ""
 	if c.IsSet("session") {
@@ -306,14 +339,14 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 			logrus.Warnf("Session name sanitized from '%s' to '%s' (only lowercase alphanumeric and hyphens allowed)", rawSessionName, sessionName)
 		}
 	}
-	
+
 	// If --new-session is specified, auto-generate a session ID
 	if newSessionName != "" && sessionName == "" {
 		// Generate unique session ID using timestamp
 		sessionName = fmt.Sprintf("%d", time.Now().Unix())
 		logrus.Infof("Auto-generated session ID: %s", sessionName)
 	}
-	
+
 	// If window name is specified, look up the session
 	windowName := ""
 	if c.IsSet("window") {
@@ -329,11 +362,11 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 			logrus.Warnf("Window name sanitized from '%s' to '%s' (only lowercase alphanumeric and hyphens allowed)", rawWindowName, windowName)
 		}
 	}
-	
+
 	if windowName != "" && sessionName == "" && newSessionName == "" {
 		// Need to look up session by window name
 		logrus.Debugf("Looking up session by window name: %s", windowName)
-		
+
 		// Create a temporary client to query sessions
 		tempClient, err := gottyclient.NewClient(url)
 		if err == nil {
@@ -354,7 +387,7 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 			if c.IsSet("password") {
 				tempClient.Password = c.String("password")
 			}
-			
+
 			// Query sessions
 			sessions, err := tempClient.ListSessions()
 			if err != nil {
@@ -374,7 +407,7 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 			}
 		}
 	}
-	
+
 	// Add session parameter if specified
 	if sessionName != "" {
 		parsedURL, err := gottyclient.ParseURL(url)
@@ -384,7 +417,7 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 				separator = "&"
 			}
 			url = parsedURL + separator + "session=" + sessionName
-			
+
 			// If this is a new session with custom window name, add name parameter too
 			if newSessionName != "" {
 				// Sanitize the session name before adding to URL (defense in depth)
@@ -441,14 +474,14 @@ func createClient(c *cli.Context) (*gottyclient.Client, error) {
 	if client.AdminPassword == "" && c.GlobalIsSet("admin-password") {
 		client.AdminPassword = c.GlobalString("admin-password")
 	}
-	
+
 	// Set path suffix
 	if c.IsSet("path-suffix") {
 		client.PathSuffix = c.String("path-suffix")
 	} else if c.GlobalIsSet("path-suffix") {
 		client.PathSuffix = c.GlobalString("path-suffix")
 	}
-	
+
 	logrus.Debugf("Client configuration: User=%q, AdminPassword set=%v, PathSuffix=%q", client.User, client.AdminPassword != "", client.PathSuffix)
 
 	// If user is set but password is not, prompt for password
@@ -501,11 +534,11 @@ func connectAction(c *cli.Context) error {
 		if saveAlias == "" {
 			return fmt.Errorf("--save requires an alias name")
 		}
-		
+
 		if err := saveConnectionConfig(c, client, saveAlias); err != nil {
 			return fmt.Errorf("failed to save config: %v", err)
 		}
-		
+
 		fmt.Printf("✓ Saved connection settings as '%s' in %s\n", saveAlias, c.String("config"))
 	}
 
@@ -521,7 +554,7 @@ func saveConnectionConfig(c *cli.Context, client *gottyclient.Client, alias stri
 	hostConfig := &gottyclient.HostConfig{
 		Host: alias,
 	}
-	
+
 	// Determine what to save based on how the connection was made
 	if c.IsSet("callsign") {
 		// Save callsign instead of URL (uppercase for consistency)
@@ -530,7 +563,7 @@ func saveConnectionConfig(c *cli.Context, client *gottyclient.Client, alias stri
 		// Save the URL
 		hostConfig.URL = client.URL
 	}
-	
+
 	// Save authentication settings
 	if client.User != "" {
 		hostConfig.User = client.User
@@ -542,7 +575,7 @@ func saveConnectionConfig(c *cli.Context, client *gottyclient.Client, alias stri
 	if client.AdminPassword != "" {
 		hostConfig.AdminPassword = client.AdminPassword
 	}
-	
+
 	// Save connection settings
 	if client.SkipTLSVerify {
 		hostConfig.SkipTLSVerify = true
@@ -559,7 +592,7 @@ func saveConnectionConfig(c *cli.Context, client *gottyclient.Client, alias stri
 	if client.PathSuffix != "" {
 		hostConfig.PathSuffix = client.PathSuffix
 	}
-	
+
 	// Save to config file
 	return gottyclient.SaveHostConfig(alias, hostConfig)
 }
@@ -702,6 +735,147 @@ func parseDetachKeys(keys string) []byte {
 	return result
 }
 
+// supportAction implements the `uberterm support` subcommand.
+// Without --list it picks the first (or --uuid / --callsign matched) active support
+// tunnel and connects to its /terminal/ endpoint using the admin password that the
+// tunnel server extracted from the instance's uploaded config.yaml.
+func supportAction(c *cli.Context) error {
+	// Load config file to get stored Tunnel settings (lowest priority)
+	cfg, err := gottyclient.LoadConfigFromPath(c.GlobalString("config"))
+	if err != nil {
+		logrus.Warnf("Failed to load config file: %v", err)
+		cfg = &gottyclient.Config{Hosts: make(map[string]*gottyclient.HostConfig)}
+	}
+
+	// Resolve tunnel URL: flag > env > config file > built-in default
+	tunnelURL := c.String("tunnel-url")
+	if tunnelURL == "https://tunnel.ubersdr.org" && cfg.Tunnel.URL != "" {
+		// flag was not explicitly set by user (still at default), use config value
+		tunnelURL = cfg.Tunnel.URL
+	}
+
+	// Resolve admin password: flag/env > config file
+	adminPassword := c.String("admin-password")
+	if adminPassword == "" {
+		adminPassword = cfg.Tunnel.AdminPassword
+	}
+
+	if adminPassword == "" {
+		return fmt.Errorf("tunnel admin password required: set --admin-password, UBERTERM_TUNNEL_ADMIN_PASSWORD, or add a Tunnel block to %s", c.GlobalString("config"))
+	}
+
+	entries, err := gottyclient.ListSupportSessions(tunnelURL, adminPassword)
+	if err != nil {
+		return fmt.Errorf("failed to list support sessions: %v", err)
+	}
+
+	// --list: just print and exit
+	if c.Bool("list") {
+		if len(entries) == 0 {
+			fmt.Println("No active support tunnels.")
+			return nil
+		}
+		fmt.Printf("%-36s  %-12s  %-20s  %-8s  %-60s  %s\n",
+			"INSTANCE UUID", "CALLSIGN", "CONNECTED AT", "PASSWORD", "ACCESS URL", "CLIENT IP")
+		fmt.Println(strings.Repeat("-", 160))
+		for _, e := range entries {
+			pw := e.AdminPassword
+			if pw == "" {
+				pw = "(unknown)"
+			}
+			connAt := "(unknown)"
+			if e.ConnectedAt != nil {
+				connAt = *e.ConnectedAt
+			}
+			fmt.Printf("%-36s  %-12s  %-20s  %-8s  %-60s  %s\n",
+				e.InstanceUUID, e.Callsign, connAt, pw, e.AccessURL, e.ClientIP)
+		}
+		return nil
+	}
+
+	// Pick the target entry
+	var target *gottyclient.SupportEntry
+
+	filterUUID := c.String("uuid")
+	filterCallsign := strings.ToUpper(c.String("callsign"))
+
+	for i := range entries {
+		e := &entries[i]
+		if filterUUID != "" && !strings.EqualFold(e.InstanceUUID, filterUUID) {
+			continue
+		}
+		if filterCallsign != "" && strings.ToUpper(e.Callsign) != filterCallsign {
+			continue
+		}
+		target = e
+		break
+	}
+
+	if target == nil {
+		if len(entries) == 0 {
+			return fmt.Errorf("no active support tunnels found")
+		}
+		if filterUUID != "" || filterCallsign != "" {
+			return fmt.Errorf("no support tunnel matched the given --uuid / --callsign filter")
+		}
+		// Default: use the first entry
+		target = &entries[0]
+	}
+
+	termURL := gottyclient.SupportTerminalURL(*target)
+	instancePW := target.AdminPassword
+
+	connAt := "(unknown)"
+	if target.ConnectedAt != nil {
+		connAt = *target.ConnectedAt
+	}
+	fmt.Printf("🔧 Connecting to support tunnel for %s (%s)\n", target.Callsign, target.InstanceUUID)
+	fmt.Printf("   Terminal URL  : %s\n", termURL)
+	fmt.Printf("   Client IP     : %s\n", target.ClientIP)
+	fmt.Printf("   Connected at  : %s\n", connAt)
+	if instancePW != "" {
+		fmt.Printf("   Admin password: available\n")
+	} else {
+		fmt.Printf("   Admin password: ⚠️  not available (config.yaml may not have been uploaded yet)\n")
+	}
+	fmt.Println()
+
+	// Register our IP with the tunnel server so we are allowed through the
+	// support subdomain's IP allowlist. The entry is one-time-use and expires
+	// after 60 seconds if no connection arrives.
+	ip, expiresIn, err := gottyclient.RequestSupportAccess(tunnelURL, adminPassword)
+	if err != nil {
+		return fmt.Errorf("failed to register IP for support access: %v", err)
+	}
+	fmt.Printf("   Access granted: IP %s registered for %ds\n\n", ip, expiresIn)
+
+	client, err := gottyclient.NewClient(termURL)
+	if err != nil {
+		return fmt.Errorf("failed to create client: %v", err)
+	}
+
+	// Authenticate against the support subdomain using the instance's own admin
+	// password (extracted from its config.yaml by the tunnel server).
+	client.AdminPassword = instancePW
+	client.V2 = true
+
+	// Inherit global TLS / proxy flags if set
+	if c.GlobalBool("skip-tls-verify") {
+		client.SkipTLSVerify = true
+	}
+	if c.GlobalBool("use-proxy-from-env") {
+		client.UseProxyFromEnv = true
+	}
+
+	fmt.Println("💡 Tip: To detach from session without closing it, press Ctrl-b then d")
+	fmt.Println()
+
+	if err := client.Loop(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // generateSessionName generates a random adjective-noun combination
 func generateSessionName() string {
 	adjectives := []string{
@@ -710,17 +884,17 @@ func generateSessionName() string {
 		"zany", "bold", "cool", "daring", "fancy", "grand", "lucky", "mighty",
 		"noble", "quick", "smart", "wise", "agile", "cosmic", "dynamic", "epic",
 	}
-	
+
 	nouns := []string{
 		"panda", "tiger", "eagle", "dolphin", "falcon", "lion", "wolf", "bear",
 		"hawk", "fox", "owl", "shark", "dragon", "phoenix", "unicorn", "griffin",
 		"raven", "cobra", "jaguar", "lynx", "otter", "badger", "ferret", "mink",
 		"viper", "python", "condor", "sparrow", "robin", "wren", "finch", "lark",
 	}
-	
+
 	rand.Seed(time.Now().UnixNano())
 	adj := adjectives[rand.Intn(len(adjectives))]
 	noun := nouns[rand.Intn(len(nouns))]
-	
+
 	return fmt.Sprintf("%s-%s", adj, noun)
 }

@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2019/12/10 05:38:59.000.243,=C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig.tlh</Transaction>
+    <Transaction>2019/12/10 05:41:18.000.647,=C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig.h</Transaction>
+    <Transaction>2019/12/10 06:09:37.000.819,=C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig.tli</Transaction>
+    <Transaction>2019/12/10 06:29:32.000.053,C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig.tli=</Transaction>
+    <Transaction>2019/12/10 06:35:21.000.305,C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig.h=</Transaction>
+    <Transaction>2019/12/10 12:50:24.000.617,=C:\Users\Eugenio\Desktop\GRG Desktop\OmniRig_TLB.pas</Transaction>
+    <Transaction>2019/12/10 13:09:44.000.800,=C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig_TLB.hpp</Transaction>
+    <Transaction>2019/12/29 07:59:28.000.332,C:\Users\Eugenio\Desktop\GRG Desktop\OmniRig_TLB.pas=</Transaction>
+    <Transaction>2019/12/29 10:42:32.000.707,=C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig_OCX.cpp</Transaction>
+    <Transaction>2019/12/29 10:51:20.000.060,C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig_OCX.cpp=</Transaction>
+    <Transaction>2019/12/29 10:56:57.000.709,=C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig_OCX.cpp</Transaction>
+    <Transaction>2019/12/29 11:03:53.000.094,=C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig_TLB.cpp</Transaction>
+    <Transaction>2020/01/08 23:34:51.000.474,=C:\Users\Eugenio\Desktop\mmsstv-master\Unit17.cpp</Transaction>
+    <Transaction>2020/01/08 23:35:15.000.856,C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig.h=C:\Users\Eugenio\Desktop\mmsstv-master\Unit17.h</Transaction>
+    <Transaction>2020/01/08 23:35:15.000.856,C:\Users\Eugenio\Desktop\mmsstv-master\OmniRig.cpp=C:\Users\Eugenio\Desktop\mmsstv-master\Unit17.cpp</Transaction>
+    <Transaction>2020/01/09 02:41:35.000.978,=C:\Users\Eugenio\Desktop\GRG Desktop\Unit13.pas</Transaction>
+    <Transaction>2020/01/09 02:42:12.000.197,C:\Users\Eugenio\Desktop\GRG Desktop\Unit13.pas=</Transaction>
+    <Transaction>2020/01/09 02:44:48.000.204,=C:\Users\Eugenio\Desktop\GRG Desktop\Unit14.pas</Transaction>
+    <Transaction>2020/01/09 02:46:00.000.105,C:\Users\Eugenio\Desktop\GRG Desktop\Unit14.pas=</Transaction>
+    <Transaction>2020/01/11 00:53:03.000.606,=C:\Users\Eugenio\Desktop\mmsstv-master\OKCANCL2.cpp</Transaction>
+    <Transaction>2020/01/12 10:20:51.000.443,=C:\Users\Eugenio\Desktop\mmsstv-master\Unit1.cpp</Transaction>
+    <Transaction>2020/01/15 02:27:23.000.144,=C:\Users\Eugenio\Desktop\mmsstv-master\CkRsa.h</Transaction>
+    <Transaction>2020/01/15 02:31:46.000.265,C:\Users\Eugenio\Desktop\mmsstv-master\CkRsa.h=</Transaction>
+    <Transaction>2020/01/27 02:02:44.000.682,=C:\Users\Eugenio\Desktop\mmsstv-master - carbono\Unit17.cpp</Transaction>
+    <Transaction>2020/01/27 02:06:28.000.408,C:\Users\Eugenio\Desktop\mmsstv-master - carbono\Unit17.h=C:\Users\Eugenio\Desktop\mmsstv-master - carbono\qrzcom.h</Transaction>
+    <Transaction>2020/01/27 02:06:28.000.408,C:\Users\Eugenio\Desktop\mmsstv-master - carbono\Unit17.cpp=C:\Users\Eugenio\Desktop\mmsstv-master - carbono\qrzcom.cpp</Transaction>
+  </Transactions>
+</BorlandProject>

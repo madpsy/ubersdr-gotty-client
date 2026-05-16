@@ -26,9 +26,16 @@ type HostConfig struct {
 	PathSuffix      string
 }
 
+// TunnelConfig holds settings for the UberSDR tunnel server admin API.
+type TunnelConfig struct {
+	URL           string // Base URL of the tunnel server (default: https://tunnel.ubersdr.org)
+	AdminPassword string // Admin password sent as X-Admin-Password
+}
+
 // Config represents the entire configuration file
 type Config struct {
-	Hosts map[string]*HostConfig
+	Hosts  map[string]*HostConfig
+	Tunnel TunnelConfig
 }
 
 // GetDefaultConfigPath returns the default config file path
@@ -65,6 +72,12 @@ func EnsureConfigExists() error {
 #
 # File location: ~/.gotty-client/config
 # Permissions: This file should be readable only by you (chmod 600)
+
+# Tunnel server settings (used by: uberterm support)
+# The Tunnel block configures access to the UberSDR tunnel admin API.
+#Tunnel
+#    URL https://tunnel.ubersdr.org
+#    AdminPassword your-tunnel-admin-password
 
 # Example: Local development server
 #Host local
@@ -124,6 +137,10 @@ func EnsureConfigExists() error {
 #   WSOrigin        - WebSocket Origin URL
 #   V2              - Use GoTTY 2.0 protocol (true/false)
 #   PathSuffix      - Path to append to URL (default: /terminal/)
+#
+# Tunnel Block Options (for uberterm support):
+#   URL             - Tunnel server base URL (default: https://tunnel.ubersdr.org)
+#   AdminPassword   - Tunnel server admin password (X-Admin-Password)
 `
 
 	if err := os.WriteFile(configPath, []byte(exampleConfig), 0600); err != nil {
@@ -161,6 +178,7 @@ func LoadConfigFromPath(path string) (*Config, error) {
 
 	scanner := bufio.NewScanner(file)
 	var currentHost *HostConfig
+	inTunnelBlock := false
 	lineNum := 0
 
 	for scanner.Scan() {
@@ -172,12 +190,20 @@ func LoadConfigFromPath(path string) (*Config, error) {
 			continue
 		}
 
+		// Parse Tunnel block directive
+		if line == "Tunnel" {
+			inTunnelBlock = true
+			currentHost = nil
+			continue
+		}
+
 		// Parse Host directive
 		if strings.HasPrefix(line, "Host ") {
 			hostName := strings.TrimSpace(strings.TrimPrefix(line, "Host "))
 			if hostName == "" {
 				return nil, fmt.Errorf("line %d: Host directive requires a name", lineNum)
 			}
+			inTunnelBlock = false
 			currentHost = &HostConfig{
 				Host: hostName,
 			}
@@ -185,18 +211,30 @@ func LoadConfigFromPath(path string) (*Config, error) {
 			continue
 		}
 
-		// Parse configuration options
-		if currentHost == nil {
-			return nil, fmt.Errorf("line %d: configuration option outside of Host block", lineNum)
-		}
-
 		parts := strings.SplitN(line, " ", 2)
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("line %d: invalid configuration line: %s", lineNum, line)
 		}
-
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
+
+		// Parse Tunnel block options
+		if inTunnelBlock {
+			switch key {
+			case "URL":
+				config.Tunnel.URL = value
+			case "AdminPassword":
+				config.Tunnel.AdminPassword = value
+			default:
+				logrus.Warnf("line %d: unknown Tunnel option: %s", lineNum, key)
+			}
+			continue
+		}
+
+		// Parse Host block options
+		if currentHost == nil {
+			return nil, fmt.Errorf("line %d: configuration option outside of Host or Tunnel block", lineNum)
+		}
 
 		switch key {
 		case "URL":
@@ -306,7 +344,7 @@ func (hc *HostConfig) ApplyToClient(client *Client) {
 
 	// Note: URL and Callsign are handled in createClient() before this is called
 	// We don't override URL here to avoid duplicate callsign resolution
-	
+
 	if hc.User != "" {
 		client.User = hc.User
 	}
@@ -411,10 +449,22 @@ func WriteConfig(path string, config *Config) error {
 	fmt.Fprintln(writer, "# File location:", path)
 	fmt.Fprintln(writer)
 
+	// Write Tunnel block if configured
+	if config.Tunnel.URL != "" || config.Tunnel.AdminPassword != "" {
+		fmt.Fprintln(writer, "Tunnel")
+		if config.Tunnel.URL != "" {
+			fmt.Fprintf(writer, "    URL %s\n", config.Tunnel.URL)
+		}
+		if config.Tunnel.AdminPassword != "" {
+			fmt.Fprintf(writer, "    AdminPassword %s\n", config.Tunnel.AdminPassword)
+		}
+		fmt.Fprintln(writer)
+	}
+
 	// Write each host configuration
 	for hostAlias, hostConfig := range config.Hosts {
 		fmt.Fprintf(writer, "Host %s\n", hostAlias)
-		
+
 		if hostConfig.URL != "" {
 			fmt.Fprintf(writer, "    URL %s\n", hostConfig.URL)
 		}
@@ -445,7 +495,7 @@ func WriteConfig(path string, config *Config) error {
 		if hostConfig.PathSuffix != "" {
 			fmt.Fprintf(writer, "    PathSuffix %s\n", hostConfig.PathSuffix)
 		}
-		
+
 		fmt.Fprintln(writer)
 	}
 
